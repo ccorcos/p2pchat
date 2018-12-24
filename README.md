@@ -5,7 +5,8 @@ Goal: Peer to peer chat messaging (voice, video, email?).
 ---
 
 - [x] Crypto keys for each device and each user.
-- [ ] simple-peer and signalhub to connect users.
+- [x] simple-peer and signalhub to connect users.
+- [ ] how to manage users, devices, keys, and broadcasting messages.
 - [ ] Set up sqlite.
 - [ ] Encrypt and sign each message.
 - [ ] Offline retry.

@@ -91,12 +91,14 @@ export function verify(args: {
 const appDataDir = app.getPath("appData")
 const rsaKeyPath = path.join(appDataDir, "rsaKey.json")
 
-export async function loadRsaKey(): Promise<RSAKey> {
+export async function loadRSAKey() {
 	try {
 		const key: RSAKey = await fs.readJSON(rsaKeyPath)
 		return key
 	} catch (error) {}
+}
 
+export async function initRSAKey() {
 	const key = await createRSAKey()
 	await fs.writeJSON(rsaKeyPath, key)
 	return key
@@ -144,13 +146,8 @@ export function encryptMessage(args: {
 export function decryptMessage(args: {
 	message: EncryptedMessage
 	rsa: RSAKey
-	knownPublicKeys: Set<string>
 }) {
-	const { rsa, message, knownPublicKeys } = args
-	if (!knownPublicKeys.has(message.from.publicKey)) {
-		console.log("Message from unkown key " + message.from.publicKey)
-		return
-	}
+	const { rsa, message } = args
 
 	const verified = verify({
 		rsa: { publicKey: message.from.publicKey },
@@ -158,7 +155,6 @@ export function decryptMessage(args: {
 		data: message.data,
 	})
 	if (!verified) {
-		console.log("Invalid signature from " + message.from.publicKey)
 		return
 	}
 
