@@ -1,22 +1,59 @@
 import * as React from "react"
 import "../demo"
 
-export function App() {
-	const [{ x, y }, setMouse] = React.useState({ x: 0, y: 0 })
-	React.useEffect(() => {
-		const handleMouseMove = event => {
-			setMouse({ x: event.clientX, y: event.clientY })
-		}
-		window.addEventListener("mousemove", handleMouseMove)
-		return () => {
-			window.removeEventListener("mousemove", handleMouseMove)
-		}
-	})
+export type LandingRoute = {
+	name: "landing"
+}
 
-	return (
-		<div>
-			<h1>Hello World</h1>
-			<div style={{ width: x, height: y, background: "black" }} />
-		</div>
-	)
+export type SyncRoute = {
+	name: "sync"
+}
+
+export type Onboarding = {
+	name: "onboarding"
+}
+
+export type Route = LandingRoute | SyncRoute | Onboarding
+
+function useRouter() {
+	return React.useState<Route>({ name: "landing" })
+}
+
+export function App() {
+	const [route, setRoute] = useRouter()
+
+	//===============================================================
+	// Events.
+	//===============================================================
+
+	function handleGetStarted() {
+		setRoute({ name: "onboarding" })
+	}
+
+	function handleSync() {
+		setRoute({ name: "sync" })
+	}
+
+	//===============================================================
+	// Render.
+	//===============================================================
+
+	if (route.name === "landing") {
+		return (
+			<div>
+				<h1>Welcome to P2P Chat!</h1>
+				<p>
+					This application let's you communicate with others without sending
+					your data on any 3rd party services.
+				</p>
+				<button onClick={handleGetStarted}>Get started</button>
+				<button onClick={handleSync}>Sync with another device</button>
+			</div>
+		)
+	} else if (route.name === "sync") {
+	} else if (route.name === "onboarding") {
+	} else {
+		// 404
+		return <div>404</div>
+	}
 }
