@@ -1,14 +1,13 @@
 import * as React from "react"
 import * as ReactDOM from "react-dom"
-import { css } from "glamor"
 import { App } from "./components/App"
+import { loadRsaKey } from "./helpers/cryptoHelpers"
 
-css.global("a", {
-	color: "inherit",
-	textDecoration: "none",
-})
+async function main() {
+	const rsaKey = await loadRsaKey()
 
-const root = document.createElement("div")
-document.body.appendChild(root)
+	const root = document.getElementById("root") as HTMLElement
+	ReactDOM.render(<App />, root)
+}
 
-ReactDOM.render(<App />, root)
+main()
