@@ -9,7 +9,11 @@ export type RSAKey = {
 	publicKey: string
 }
 
-export async function makeRSAKey(): Promise<RSAKey> {
+export type RSAPublicKey = {
+	publicKey: string
+}
+
+export async function createRSAKey(): Promise<RSAKey> {
 	const privateKey = await new Promise<string>((resolve, reject) => {
 		const child = spawn("openssl", ["genrsa", "2048"])
 
@@ -64,7 +68,7 @@ export async function makeRSAKey(): Promise<RSAKey> {
 	}
 }
 
-export function signData(args: { rsa: RSAKey; data: string }) {
+export function sign(args: { rsa: RSAKey; data: string }) {
 	const { rsa, data } = args
 	const sign = crypto.createSign("SHA256")
 	sign.write(data)
@@ -72,8 +76,8 @@ export function signData(args: { rsa: RSAKey; data: string }) {
 	return sign.sign(rsa.privateKey, "hex")
 }
 
-export function verifyData(args: {
-	rsa: RSAKey
+export function verify(args: {
+	rsa: RSAPublicKey
 	signature: string
 	data: string
 }) {
@@ -93,7 +97,72 @@ export async function loadRsaKey(): Promise<RSAKey> {
 		return key
 	} catch (error) {}
 
-	const key = await makeRSAKey()
+	const key = await createRSAKey()
 	await fs.writeJSON(rsaKeyPath, key)
 	return key
+}
+
+export function encrypt(args: { rsa: RSAPublicKey; data: string }) {
+	const { rsa, data } = args
+	return crypto
+		.publicEncrypt(rsa.publicKey, Buffer.from(data, "utf8"))
+		.toString("base64")
+}
+
+export function decrypt(args: { rsa: RSAKey; data: string }) {
+	const { rsa, data } = args
+	return crypto
+		.privateDecrypt(rsa.privateKey, Buffer.from(data, "base64"))
+		.toString("utf8")
+}
+
+export type EncryptedMessage = {
+	data: string
+	from: {
+		publicKey: string
+		signature: string
+	}
+}
+
+export function encryptMessage(args: {
+	to: RSAPublicKey
+	from: RSAKey
+	data: string
+}): EncryptedMessage {
+	const { to, from, data } = args
+	const encryptedData = encrypt({ rsa: to, data: data })
+	const signature = sign({ rsa: from, data: encryptedData })
+	return {
+		data: encryptedData,
+		from: {
+			publicKey: from.publicKey,
+			signature: signature,
+		},
+	}
+}
+
+export function decryptMessage(args: {
+	message: EncryptedMessage
+	rsa: RSAKey
+	knownPublicKeys: Set<string>
+}) {
+	const { rsa, message, knownPublicKeys } = args
+	if (!knownPublicKeys.has(message.from.publicKey)) {
+		console.log("Message from unkown key " + message.from.publicKey)
+		return
+	}
+
+	const verified = verify({
+		rsa: { publicKey: message.from.publicKey },
+		signature: message.from.signature,
+		data: message.data,
+	})
+	if (!verified) {
+		console.log("Invalid signature from " + message.from.publicKey)
+		return
+	}
+
+	const decrypted = decrypt({ rsa: rsa, data: message.data })
+
+	return decrypted
 }

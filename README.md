@@ -25,3 +25,6 @@ Goal: Peer to peer chat messaging (voice, video, email?).
 - sync databases.
 - electron app, react native or progressive web app.
 
+
+
+https://github.com/sqlcipher/sqlcipher
