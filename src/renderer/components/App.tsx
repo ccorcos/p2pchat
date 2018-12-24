@@ -1,5 +1,4 @@
 import * as React from "react"
-import "../demo"
 
 export type LandingRoute = {
 	name: "landing"
@@ -51,7 +50,9 @@ export function App() {
 			</div>
 		)
 	} else if (route.name === "sync") {
+		return <div>sync</div>
 	} else if (route.name === "onboarding") {
+		return <div>onboarding</div>
 	} else {
 		// 404
 		return <div>404</div>
