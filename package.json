@@ -7,7 +7,6 @@
 		"setup": "mkdir -p dist/renderer && cp src/renderer/index.html dist/renderer/index.html",
 		"build": "tsc",
 		"watch": "tsc -w",
-		"lint": "tslint -c tslint.json -p tsconfig.json",
 		"start": "npm run setup && npm run build && electron ./dist/main/index.js",
 		"test": "ava"
 	},
