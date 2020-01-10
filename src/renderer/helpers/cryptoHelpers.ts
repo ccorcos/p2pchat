@@ -98,11 +98,15 @@ export async function loadRSAKey() {
 	} catch (error) {}
 }
 
-export async function initRSAKey() {
-	const key = await createRSAKey()
-	await fs.writeJSON(rsaKeyPath, key)
-	return key
+export async function writeRSAKey(rsaKey: RSAKey) {
+	await fs.writeJSON(rsaKeyPath, rsaKey)
 }
+
+// export async function initRSAKey() {
+// 	const key = await createRSAKey()
+// 	await fs.writeJSON(rsaKeyPath, key)
+// 	return key
+// }
 
 export function encrypt(args: { rsa: RSAPublicKey; data: string }) {
 	const { rsa, data } = args

@@ -1,8 +1,20 @@
 # P2P Chat
 
-Goal: Peer to peer chat messaging (voice, video, email?).
+Goal: P2P chat messaging based with based on a solid event-sourcing infrastruture.
+
+## To Do
+
+- 1-player messaging. append items to a log and read the log.
+	- multiple chatrooms
+- p2p mechanics
+	- human discovery (share a link or something)
+	- digital discovery (signalhub)
+	- permissions
+	- syncing
 
 ---
+
+OLD
 
 - [x] Crypto keys for each device and each user.
 - [x] simple-peer and signalhub to connect users.
@@ -14,18 +26,5 @@ Goal: Peer to peer chat messaging (voice, video, email?).
 - [ ] Send files.
 
 
-**Phase 1 Foundation:** peer to peer chat application. sqlite local database. secure communication. secure database permission. sync devices. send images and files
 
----
-
-- Generalize. Database permission and sync. Transactions.
-
----
-
-- create crypto keys, save in local storage.
-- sync databases.
-- electron app, react native or progressive web app.
-
-
-
-https://github.com/sqlcipher/sqlcipher
+https://arkwright.github.io/event-sourcing.html
