@@ -38,6 +38,7 @@
 		"signalhub": "^4.9.0",
 		"simple-peer": "^9.6.2",
 		"url": "^0.11.0",
+		"uuid": "^3.4.0",
 		"wrtc": "^0.4.3"
 	},
 	"devDependencies": {
@@ -50,9 +51,11 @@
 		"@types/react": "^16.9.17",
 		"@types/react-dom": "^16.9.4",
 		"@types/simple-peer": "^9.6.0",
+		"@types/uuid": "^3.4.6",
 		"@types/webpack": "^4.41.2",
 		"ava": "^2.4.0",
 		"awesome-typescript-loader": "^5.2.1",
+		"data-type-ts": "0.0.4",
 		"electron": "^6.1.4",
 		"file-loader": "^5.0.2",
 		"html-webpack-plugin": "^3.2.0",

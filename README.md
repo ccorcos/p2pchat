@@ -4,6 +4,8 @@ Goal: P2P chat messaging based with based on a solid event-sourcing infrastrutur
 
 ## To Do
 
+- send someone an html file, they can open it and chat back. challenges: persistence, sync daemon. Save a list of messages, but the html itself is the current view of the "database".
+
 - need to come up with RPC abstraction for saving logs and reading logs and I realized the abstraction for loading the logs into memory is the same abstraction for syncing logs anywhere so we may as well start there. We need some kind of log event emitter abstraction that can sync from one place to another.
 
 - 1-player messaging. append items to a log and read the log.
