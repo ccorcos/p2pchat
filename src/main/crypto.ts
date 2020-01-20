@@ -1,180 +1,85 @@
-import * as crypto from "crypto"
-import { spawn } from "child_process"
+import * as pgp from "openpgp"
 
-export type RSAKey = {
+export type Key = {
 	privateKey: string
 	publicKey: string
 }
 
-export type RSAPublicKey = {
+export type PublicKey = {
 	publicKey: string
 }
 
-export async function createRSAKey(): Promise<RSAKey> {
-	const privateKey = await new Promise<string>((resolve, reject) => {
-		const child = spawn("openssl", ["genrsa", "2048"])
-
-		let result = ""
-
-		child.stdout.on("data", value => {
-			result += value
-		})
-
-		child.on("exit", code => {
-			if (code === 0) {
-				resolve(result)
-			} else {
-				reject(new Error(`Unexpected status code ${code}`))
-			}
-		})
-
-		child.on("error", error => {
-			reject(error)
-		})
+export async function createKey(): Promise<Key> {
+	const key = await pgp.generateKey({
+		userIds: [{ name: Math.random().toString() }],
+		numBits: 4096,
+		// passphrase: "",
 	})
-
-	const publicKey = await new Promise<string>((resolve, reject) => {
-		const child = spawn("openssl", ["rsa", "-pubout"])
-
-		let result = ""
-
-		child.stdout.on("data", value => {
-			result += value
-		})
-
-		child.on("exit", code => {
-			if (code === 0) {
-				resolve(result)
-			} else {
-				reject(new Error(`Unexpected status code ${code}`))
-			}
-		})
-
-		child.on("error", error => {
-			reject(error)
-		})
-
-		child.stdin.write(privateKey)
-
-		child.stdin.end()
-	})
-
 	return {
-		privateKey,
-		publicKey,
+		publicKey: key.publicKeyArmored,
+		privateKey: key.privateKeyArmored,
 	}
 }
 
-export function sign(args: { rsaKey: RSAKey; data: string }) {
-	const { rsaKey, data } = args
-	const sign = crypto.createSign("SHA256")
-	sign.write(data)
-	sign.end()
-	return sign.sign(rsaKey.privateKey, "base64")
-}
-
-export function verify(args: {
-	rsaKey: RSAPublicKey
-	signature: string
-	data: string
-}) {
-	const { rsaKey, signature, data } = args
-	const verify = crypto.createVerify("SHA256")
-	verify.write(data)
-	verify.end()
-	return verify.verify(rsaKey.publicKey, signature, "base64")
-}
-
-export function encrypt(args: { rsaKey: RSAPublicKey; data: string }) {
-	const { rsaKey, data } = args
-	return crypto
-		.publicEncrypt(rsaKey.publicKey, Buffer.from(data, "utf8"))
-		.toString("base64")
-}
-
-export function decrypt(args: { rsaKey: RSAKey; data: string }) {
-	const { rsaKey, data } = args
-	return crypto
-		.privateDecrypt(rsaKey.privateKey, Buffer.from(data, "base64"))
-		.toString("utf8")
-}
-
-export type EncryptedPayload = {
+type Payload = {
 	publicKey: string
 	signature: string
 	data: string
 }
 
-export function encryptAndSign(args: {
-	from: RSAKey
-	to: RSAPublicKey
+async function readKey(key: string) {
+	return (await pgp.key.readArmored(key)).keys[0]
+}
+
+// Using detached signatures because we don't know
+export async function encrypt(args: {
+	from: Key
+	to: PublicKey
 	data: string
 }) {
-	const { to, from, data } = args
-	const signature = sign({ rsaKey: from, data })
-	const payload: EncryptedPayload = {
+	const { from, to, data } = args
+	// await privateKeyObj.decrypt(passphrase)
+
+	const { data: signature } = await pgp.sign({
+		message: pgp.cleartext.fromText(data),
+		privateKeys: [await readKey(from.privateKey)],
+	})
+
+	const payload: Payload = {
 		publicKey: from.publicKey,
 		signature: signature,
 		data: data,
 	}
-	return encrypt({ rsaKey: to, data: JSON.stringify(payload) })
-}
 
-export function decryptAndVerify(args: { rsaKey: RSAKey; data: string }) {
-	const { rsaKey, data } = args
+	const text = JSON.stringify(payload)
 
-	const decrypted = decrypt({ rsaKey, data })
-
-	const payload: EncryptedPayload = JSON.parse(decrypted)
-
-	const verified = verify({
-		rsaKey: { publicKey: payload.publicKey },
-		signature: payload.signature,
-		data: payload.data,
+	const { data: encryptedPayload } = await pgp.encrypt({
+		message: pgp.message.fromText(text),
+		publicKeys: (await pgp.key.readArmored(to.publicKey)).keys,
+		armor: true,
 	})
 
-	if (!verified) {
+	return encryptedPayload
+}
+
+export async function decrypt(args: { key: Key; encryptedPayload: string }) {
+	const { key, encryptedPayload } = args
+
+	const { data: text } = await pgp.decrypt({
+		message: await pgp.message.readArmored(encryptedPayload),
+		privateKeys: [await readKey(key.privateKey)],
+	})
+
+	const payload: Payload = JSON.parse(text as string)
+
+	const { signatures } = await pgp.verify({
+		message: await pgp.cleartext.fromText(payload.data),
+		publicKeys: [await readKey(payload.publicKey)],
+	})
+
+	if (!signatures[0]) {
 		throw new Error("Invalid signature.")
 	}
 
 	return payload
 }
-
-export function createAes256Password() {
-	return new Promise<string>((resolve, reject) => {
-		crypto.randomBytes(256, (error, buffer) => {
-			if (error) {
-				reject(error)
-			} else {
-				resolve(buffer.toString("base64"))
-			}
-		})
-	})
-}
-
-const aes256 = "aes-256-ctr"
-
-export function encryptAes256(args: { data: string; password: string }) {
-	const { data, password } = args
-	const cipher = crypto.createCipher(aes256, Buffer.from(password, "base64"))
-	const encrypted = Buffer.concat([
-		cipher.update(Buffer.from(data, "utf8")),
-		cipher.final(),
-	])
-	return encrypted.toString("base64")
-}
-
-export function decryptAes256(args: { data: string; password }) {
-	const { data, password } = args
-	const decipher = crypto.createDecipher(
-		aes256,
-		Buffer.from(password, "base64")
-	)
-	const decrypted = Buffer.concat([
-		decipher.update(Buffer.from(data, "base64")),
-		decipher.final(),
-	])
-	return decrypted.toString("utf8")
-}
-
-// createCipheriv

@@ -1,13 +1,7 @@
 import * as Peer from "simple-peer"
 import * as signalhub from "signalhub"
 import { Readable } from "stream"
-import {
-	RSAKey,
-	decryptAndVerify,
-	EncryptedPayload,
-	RSAPublicKey,
-	encryptAndSign,
-} from "./crypto"
+import { Key, PublicKey, decrypt, encrypt } from "./crypto"
 
 type SignalHub = {
 	subscribe(channel: string): Readable
@@ -37,15 +31,15 @@ type Connection = {
 export class ConnectionBroker {
 	private hub: SignalHub
 	private connections: { [publicKey: string]: Connection | undefined } = {}
-	private rsaKey: RSAKey
+	private key: Key
 	private listenStream: Readable
-	private shouldConnect: (rsa: RSAPublicKey) => Promise<boolean>
+	private shouldConnect: (key: PublicKey) => Promise<boolean>
 
 	constructor(args: {
-		rsaKey: RSAKey
-		shouldConnect: (rsa: RSAPublicKey) => Promise<boolean>
+		key: Key
+		shouldConnect: (key: PublicKey) => Promise<boolean>
 	}) {
-		this.rsaKey = args.rsaKey
+		this.key = args.key
 		this.shouldConnect = args.shouldConnect
 
 		this.hub = signalhub(appNamespace, [
@@ -53,11 +47,11 @@ export class ConnectionBroker {
 			"https://signalhub-hzbibrznqa.now.sh",
 		])
 
-		this.listenStream = this.hub.subscribe(this.rsaKey.publicKey)
+		this.listenStream = this.hub.subscribe(this.key.publicKey)
 		this.listenStream.on("data", async (encryptedPayload: string) => {
-			const payload = decryptAndVerify({
-				data: encryptedPayload,
-				rsaKey: this.rsaKey,
+			const payload = await decrypt({
+				key: this.key,
+				encryptedPayload: encryptedPayload,
 			})
 
 			// Check if the public key should be trusted with a connection.
@@ -67,7 +61,8 @@ export class ConnectionBroker {
 				return
 			}
 
-			const message = JSON.parse(payload.data)
+			const message: PeerSignal = JSON.parse(payload.data)
+
 			if (message.type === "signal") {
 				this.handleSignal({
 					from: { publicKey: payload.publicKey },
@@ -93,17 +88,17 @@ export class ConnectionBroker {
 	// peer.on("data", data => {})
 	// peer.destory
 
-	public async connect(args: { rsa: RSAPublicKey }) {
-		const { rsa } = args
+	public async connect(args: { key: PublicKey }) {
+		const { key } = args
 
-		const existingConnection = this.connections[rsa.publicKey]
+		const existingConnection = this.connections[key.publicKey]
 		if (existingConnection) {
 			await existingConnection.connected
 			return existingConnection.peer
 		} else {
 			const peer = new Peer({ initiator: true, objectMode: true })
 			const connected = new ResolveablePromise()
-			this.connections[rsa.publicKey] = {
+			this.connections[key.publicKey] = {
 				initiator: true,
 				peer: peer,
 				connected: connected,
@@ -111,7 +106,7 @@ export class ConnectionBroker {
 
 			peer.on("signal", data => {
 				this.sendPublicMessage({
-					to: rsa,
+					to: key,
 					message: {
 						type: "signal",
 						initiator: true,
@@ -127,14 +122,14 @@ export class ConnectionBroker {
 		}
 	}
 
-	private handleSignal(args: { from: RSAPublicKey; message: PeerSignal }) {
+	private handleSignal(args: { from: PublicKey; message: PeerSignal }) {
 		const { from, message } = args
 		const existingConnection = this.connections[from.publicKey]
 		if (existingConnection) {
 			// Race condition where both are initiating at the same time.
 			if (message.initiator && existingConnection.initiator) {
 				// Keep the connection with the larger key.
-				if (from.publicKey > this.rsaKey.publicKey) {
+				if (from.publicKey > this.key.publicKey) {
 					// Destroy this connection and make a new one.
 					existingConnection.peer.destroy()
 
@@ -190,16 +185,13 @@ export class ConnectionBroker {
 		}
 	}
 
-	private async sendPublicMessage(args: {
-		to: RSAPublicKey
-		message: Message
-	}) {
-		const { hub, rsaKey } = this
+	private async sendPublicMessage(args: { to: PublicKey; message: Message }) {
+		const { hub, key } = this
 		const { message, to } = args
 
-		const encrypted = encryptAndSign({
+		const encrypted = encrypt({
 			to: to,
-			from: rsaKey,
+			from: key,
 			data: JSON.stringify(message),
 		})
 
