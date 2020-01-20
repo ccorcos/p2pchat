@@ -4,6 +4,15 @@ Goal: P2P chat messaging based with based on a solid event-sourcing infrastrutur
 
 ## To Do
 
+AppStuff:
+- setup simple peer
+- send messages over wire
+- persist to files
+
+---
+
+LogStuff:
+
 - simplify the API for now.
 - retry with backoff from the local log.
 - write some basic tests.

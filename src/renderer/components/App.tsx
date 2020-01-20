@@ -1,55 +1,60 @@
 import * as React from "react"
 
-interface AppState {
-	inputValue: string
-	messages: Array<string>
+export type LandingRoute = {
+	name: "landing"
 }
 
-export class App extends React.PureComponent<{}, AppState> {
-	state: AppState = { messages: [], inputValue: "" }
+export type SyncRoute = {
+	name: "sync"
+}
 
-	private handleChangeInput = e => {
-		this.setState({
-			...this.state,
-			inputValue: e.target.value,
-		})
+export type Onboarding = {
+	name: "onboarding"
+}
+
+export type Route = LandingRoute | SyncRoute | Onboarding
+
+function useRouter() {
+	return React.useState<Route>({ name: "landing" })
+}
+
+export function App() {
+	const [route, setRoute] = useRouter()
+
+	//===============================================================
+	// Events.
+	//===============================================================
+
+	function handleGetStarted() {
+		setRoute({ name: "onboarding" })
 	}
 
-	private handleSend = () => {
-		// TODO: record to log via IPC
-		if (this.state.inputValue) {
-			this.setState({
-				messages: [...this.state.messages, this.state.inputValue],
-				inputValue: "",
-			})
-		}
+	function handleSync() {
+		setRoute({ name: "sync" })
 	}
 
-	private handleKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter") {
-			this.handleSend()
-		}
-	}
+	//===============================================================
+	// Render.
+	//===============================================================
 
-	render() {
+	if (route.name === "landing") {
 		return (
-			<div style={{ width: "30em", margin: "2em auto" }}>
-				<div>
-					{this.state.messages.map((message, i) => {
-						return <div style={{ margin: "0.2em 0" }}>{message}</div>
-					})}
-					<div style={{ margin: "0.2em 0", display: "flex" }}>
-						<input
-							value={this.state.inputValue}
-							onChange={this.handleChangeInput}
-							onKeyDown={this.handleKeyDown}
-							style={{ marginRight: 4, flex: 1 }}
-							placeholder="Message..."
-						/>
-						<button onClick={this.handleSend}>send</button>
-					</div>
-				</div>
+			<div>
+				<h1>Welcome to P2P Chat!</h1>
+				<p>
+					This application let's you communicate with others without sending
+					your data on any 3rd party services.
+				</p>
+				<button onClick={handleGetStarted}>Get started</button>
+				<button onClick={handleSync}>Sync with another device</button>
 			</div>
 		)
+	} else if (route.name === "sync") {
+		return <div>sync</div>
+	} else if (route.name === "onboarding") {
+		return <div>onboarding</div>
+	} else {
+		// 404
+		return <div>404</div>
 	}
 }
