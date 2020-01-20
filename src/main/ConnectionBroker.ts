@@ -3,11 +3,11 @@ import * as signalhub from "signalhub"
 import { Readable } from "stream"
 import {
 	RSAKey,
-	decryptMessage,
-	EncryptedMessage,
+	decryptAndVerify,
+	EncryptedPayload,
 	RSAPublicKey,
-	encryptMessage,
-} from "./cryptoHelpers"
+	encryptAndSign,
+} from "./crypto"
 
 type SignalHub = {
 	subscribe(channel: string): Readable
@@ -54,24 +54,23 @@ export class ConnectionBroker {
 		])
 
 		this.listenStream = this.hub.subscribe(this.rsaKey.publicKey)
-		this.listenStream.on("data", async (data: EncryptedMessage) => {
-			// Check if the public key should be trusted with a connection.
-			const connect = await this.shouldConnect(data.from)
-			if (!connect) {
-				console.log("Denied connection to " + data.from.publicKey)
-			}
-			const decrypted = decryptMessage({
-				message: data,
-				rsa: this.rsaKey,
+		this.listenStream.on("data", async (encryptedPayload: string) => {
+			const payload = decryptAndVerify({
+				data: encryptedPayload,
+				rsaKey: this.rsaKey,
 			})
-			if (!decrypted) {
-				console.log("Invalid signature from " + data.from.publicKey)
+
+			// Check if the public key should be trusted with a connection.
+			const connect = await this.shouldConnect({ publicKey: payload.publicKey })
+			if (!connect) {
+				console.log("Denied connection to " + payload.publicKey)
 				return
 			}
-			const message: Message = JSON.parse(decrypted)
+
+			const message = JSON.parse(payload.data)
 			if (message.type === "signal") {
 				this.handleSignal({
-					from: { publicKey: data.from.publicKey },
+					from: { publicKey: payload.publicKey },
 					message: message,
 				})
 			}
@@ -198,7 +197,7 @@ export class ConnectionBroker {
 		const { hub, rsaKey } = this
 		const { message, to } = args
 
-		const encrypted = encryptMessage({
+		const encrypted = encryptAndSign({
 			to: to,
 			from: rsaKey,
 			data: JSON.stringify(message),

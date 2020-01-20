@@ -5,20 +5,10 @@
 	"main": "index.js",
 	"scripts": {
 		"setup": "mkdir -p dist/renderer && cp src/renderer/index.html dist/renderer/index.html",
-		"build": "tsc",
-		"watch": "tsc -w",
-		"start": "npm run setup && npm run build && electron ./dist/main/index.js",
-		"test": "ava"
-	},
-	"ava": {
-		"compileEnhancements": false,
-		"extensions": [
-			"ts",
-			"tsx"
-		],
-		"require": [
-			"ts-node/register"
-		]
+		"build": "npm run setup && tsc",
+		"watch": "npm run setup && tsc -w",
+		"start": "electron ./dist/main/index.js",
+		"test": "ava -v ./dist/test/**/*.js"
 	},
 	"keywords": [],
 	"author": "",
@@ -27,12 +17,14 @@
 		"charwise": "^3.0.1",
 		"chokidar": "^3.3.1",
 		"cuid": "^2.1.8",
+		"electron-better-ipc": "^0.8.0",
 		"fs-extra": "^8.1.0",
 		"glamor": "^2.20.40",
 		"level": "^6.0.0",
 		"level-mem": "^5.0.1",
 		"lodash": "^4.17.15",
 		"moment": "^2.24.0",
+		"openpgp": "^4.8.0",
 		"react": "^16.12.0",
 		"react-dom": "^16.12.0",
 		"signalhub": "^4.9.0",
@@ -48,12 +40,13 @@
 		"@types/lodash": "^4.14.149",
 		"@types/moment": "^2.13.0",
 		"@types/node": "^13.1.6",
+		"@types/openpgp": "^4.4.8",
 		"@types/react": "^16.9.17",
 		"@types/react-dom": "^16.9.4",
 		"@types/simple-peer": "^9.6.0",
 		"@types/uuid": "^3.4.6",
 		"@types/webpack": "^4.41.2",
-		"ava": "^2.4.0",
+		"ava": "^3.0.0-beta.1",
 		"awesome-typescript-loader": "^5.2.1",
 		"data-type-ts": "0.0.4",
 		"electron": "^6.1.4",

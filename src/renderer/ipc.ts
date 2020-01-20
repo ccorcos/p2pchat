@@ -1,10 +1,16 @@
-import { ipcRenderer } from "electron"
+import { NativeApi } from "../main/ipc"
+import { ipcRenderer } from "electron-better-ipc"
 
-interface RPC {
-	loadLog
-}
-
-ipcRenderer.on("asynchronous-reply", (event, arg) => {
-	console.log(arg) // prints "pong"
-})
-ipcRenderer.send("asynchronous-message", "ping")
+export const nativeApi: NativeApi = new Proxy(
+	{},
+	{
+		get: function(obj, prop: string) {
+			return async function(arg) {
+				console.log(`[IPC] -> ${prop}`)
+				const result = await ipcRenderer.callMain(prop, arg)
+				console.log(`[IPC] <- ${prop}`)
+				return result
+			}
+		},
+	}
+) as any

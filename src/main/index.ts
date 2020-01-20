@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from "electron"
 import * as path from "path"
+import "./ipc"
 
 let mainWindow: Electron.BrowserWindow | null
 
