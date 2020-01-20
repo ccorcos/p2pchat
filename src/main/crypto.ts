@@ -94,6 +94,13 @@ export function passwordDecrypt(
 	return decrypted.toString()
 }
 
+function hashData(data: string) {
+	return crypto
+		.createHash("sha256")
+		.update(data)
+		.digest("base64")
+}
+
 export function encryptMessage(args: {
 	from: Key
 	to: PublicKey
@@ -101,33 +108,34 @@ export function encryptMessage(args: {
 }) {
 	const { from, to, data } = args
 	const password = generatePassword()
-	const signedPassword = privateEncrypt(from, data)
-
 	return {
-		head: publicEncrypt(
-			to,
-			JSON.stringify({
-				publicKey: from.publicKey,
-				signedPassword: signedPassword,
-			})
-		),
-		body: passwordEncrypt(password, data),
+		publicKey: from.publicKey,
+		encryptedPassword: publicEncrypt(to, password),
+		signedHash: privateEncrypt(from, hashData(data)),
+		encryptedData: passwordEncrypt(password, data),
 	}
 }
 
 export function decryptMessage(args: {
 	key: Key
-	data: { head: string; body: { iv: string; data: string } }
-}) {
-	const { key, data } = args
-
-	const { publicKey, signedPassword } = JSON.parse(
-		privateDecrypt(key, data.head)
-	)
-	const password = publicDecrypt(publicKey, signedPassword)
-
-	return {
-		publicKey: publicKey,
-		data: passwordDecrypt(password, data.body),
+	data: {
+		encryptedPassword: string
+		publicKey: string
+		signedHash: string
+		encryptedData: { iv: string; data: string }
 	}
+}) {
+	const {
+		key,
+		data: { encryptedPassword, publicKey, signedHash, encryptedData },
+	} = args
+
+	const password = privateDecrypt(key, encryptedPassword)
+	const expectedHash = publicDecrypt({ publicKey }, signedHash)
+
+	const data = passwordDecrypt(password, encryptedData)
+	if (hashData(data) !== expectedHash) {
+		throw new Error("Invalid signature.")
+	}
+	return { publicKey, data }
 }
